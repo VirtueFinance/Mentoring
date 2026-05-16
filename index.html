@@ -5531,6 +5531,23 @@ function handleSuccess(formData) {
 
     if (typeof fbq !== 'undefined') {
         const adAttribution = window.__tomMaxAdAttribution || {};
+
+        // ===== ADVANCED MATCHING — boost EMQ from 0/10 to 8+/10 =====
+        // Re-init pixel with hashed PII. Meta pixel.js auto-SHA256s values.
+        // Must be called BEFORE fbq('track') to apply AM to subsequent events.
+        const amEmail = (formData.get('email') || '').trim().toLowerCase();
+        const amPhone = (formData.get('phone') || '').replace(/[^0-9]/g, '');
+        const amFullName = (formData.get('name') || '').trim().toLowerCase();
+        const amNameParts = amFullName.split(/\s+/).filter(Boolean);
+        fbq('init', '1632577617824022', {
+            em: amEmail,
+            ph: amPhone,
+            fn: amNameParts[0] || '',
+            ln: amNameParts.slice(1).join(' ') || '',
+            country: 'sk',
+            external_id: window.__capiEventId
+        });
+
         // Standard Lead event (Meta Ads optimization)
         // eventID matches server-side CAPI event → Meta auto-dedupes
         fbq('track', 'Lead', {
