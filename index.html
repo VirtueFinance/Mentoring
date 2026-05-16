@@ -5451,6 +5451,22 @@ form.addEventListener('submit', async (e) => {
     const formData = new FormData(form);
     if (formData.get('bot-field')) return;
 
+    // ===== CAPI: capture cookies + IDs for server-side Meta tracking =====
+    // Adds fbc/fbp/eventId/userAgent so submission-created.js Netlify function
+    // can fire server-side Meta CAPI Lead event (AdBlock-proof).
+    const getCookie = (name) => {
+        const v = `; ${document.cookie}`.split(`; ${name}=`);
+        return v.length === 2 ? v.pop().split(';').shift() : '';
+    };
+    const capiEventId = (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : 'evt_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    window.__capiEventId = capiEventId;
+    formData.append('fbc', getCookie('_fbc'));
+    formData.append('fbp', getCookie('_fbp'));
+    formData.append('eventId', capiEventId);
+    formData.append('userAgent', navigator.userAgent);
+
     // Add UTM + timestamp metadata to formData before sending
     const utmParams = new URLSearchParams(window.location.search);
     formData.append('timestamp', new Date().toISOString());
@@ -5516,13 +5532,14 @@ function handleSuccess(formData) {
     if (typeof fbq !== 'undefined') {
         const adAttribution = window.__tomMaxAdAttribution || {};
         // Standard Lead event (Meta Ads optimization)
+        // eventID matches server-side CAPI event → Meta auto-dedupes
         fbq('track', 'Lead', {
             content_name: 'Diagnostic Call Application Submitted',
             content_category: revenue || 'unknown',
             value: 0,
             currency: 'EUR',
             ...adAttribution
-        });
+        }, {eventID: window.__capiEventId});
         // Custom — granular for funnel analysis
         fbq('trackCustom', 'DiagnosticBooked', {
             revenue_range: revenue,
