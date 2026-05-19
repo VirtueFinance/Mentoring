@@ -5609,7 +5609,9 @@ function handleSuccess(formData) {
             ...adAttribution
         }, {eventID: window.__capiEventId});
         // Custom — granular for funnel analysis
-        fbq('trackCustom', 'DiagnosticBooked', {
+        // Renamed from 'DiagnosticBooked' to 'FormSubmitted' — fires on form complete, NOT actual Calendly booking
+        // Real DiagnosticBooked event fires on thanks.tommax.sk after Calendly redirect
+        fbq('trackCustom', 'FormSubmitted', {
             revenue_range: revenue,
             has_phone: !!formData.get('phone'),
             ...adAttribution
