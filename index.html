@@ -5101,6 +5101,22 @@ section:hover > .container-wide > .section-label::before {
                 <form id="qualification-form" name="mentoring-application" method="POST" data-netlify="true" data-netlify-honeypot="bot-field">
                     <input type="hidden" name="form-name" value="mentoring-application">
 
+                    <!-- CAPI dedup + match-quality fields — MUST be declared here so Netlify Forms
+                         captures them and passes them to submission-created.js. Values set by JS on submit.
+                         Without these, Netlify drops the JS-appended fields → server eventId is undefined
+                         → no browser↔CAPI deduplication → Lead counted 2x. -->
+                    <input type="hidden" name="eventId">
+                    <input type="hidden" name="fbc">
+                    <input type="hidden" name="fbp">
+                    <input type="hidden" name="userAgent">
+                    <input type="hidden" name="timestamp">
+                    <input type="hidden" name="referrer">
+                    <input type="hidden" name="utm_source">
+                    <input type="hidden" name="utm_medium">
+                    <input type="hidden" name="utm_campaign">
+                    <input type="hidden" name="utm_content">
+                    <input type="hidden" name="utm_term">
+
                     <div class="honeypot">
                         <label>Nevyplňujte: <input name="bot-field" tabindex="-1" autocomplete="off"></label>
                     </div>
@@ -5513,20 +5529,22 @@ form.addEventListener('submit', async (e) => {
         ? crypto.randomUUID()
         : 'evt_' + Date.now() + '_' + Math.random().toString(36).slice(2);
     window.__capiEventId = capiEventId;
-    formData.append('fbc', getCookie('_fbc'));
-    formData.append('fbp', getCookie('_fbp'));
-    formData.append('eventId', capiEventId);
-    formData.append('userAgent', navigator.userAgent);
+    // Use .set (not .append) — hidden inputs above already created these keys (empty).
+    // .set overwrites; .append would produce duplicate keys (eventId=&eventId=uuid).
+    formData.set('fbc', getCookie('_fbc'));
+    formData.set('fbp', getCookie('_fbp'));
+    formData.set('eventId', capiEventId);
+    formData.set('userAgent', navigator.userAgent);
 
     // Add UTM + timestamp metadata to formData before sending
     const utmParams = new URLSearchParams(window.location.search);
-    formData.append('timestamp', new Date().toISOString());
-    formData.append('utm_source', utmParams.get('utm_source') || '');
-    formData.append('utm_medium', utmParams.get('utm_medium') || '');
-    formData.append('utm_campaign', utmParams.get('utm_campaign') || '');
-    formData.append('utm_content', utmParams.get('utm_content') || '');
-    formData.append('utm_term', utmParams.get('utm_term') || '');
-    formData.append('referrer', document.referrer || '');
+    formData.set('timestamp', new Date().toISOString());
+    formData.set('utm_source', utmParams.get('utm_source') || '');
+    formData.set('utm_medium', utmParams.get('utm_medium') || '');
+    formData.set('utm_campaign', utmParams.get('utm_campaign') || '');
+    formData.set('utm_content', utmParams.get('utm_content') || '');
+    formData.set('utm_term', utmParams.get('utm_term') || '');
+    formData.set('referrer', document.referrer || '');
 
     // ===== GOOGLE SHEETS WEB APP URL =====
     // Replace this constant with your deployed Apps Script Web App URL.
@@ -5595,8 +5613,7 @@ function handleSuccess(formData) {
             ph: amPhone,
             fn: amNameParts[0] || '',
             ln: amNameParts.slice(1).join(' ') || '',
-            country: 'sk',
-            external_id: window.__capiEventId
+            country: 'sk'
         });
 
         // Standard Lead event (Meta Ads optimization)
