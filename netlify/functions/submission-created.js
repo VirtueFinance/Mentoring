@@ -13,6 +13,16 @@ exports.handler = async (event) => {
     const data = (body.payload && body.payload.data) || {};
     const meta = body.payload || {};
 
+    // ===== FORM GATE =====
+    // Fire server-side CAPI Lead ONLY for the full application form.
+    // Skip 'partial-lead' (Step 1 capture) — those would inflate Lead with
+    // unmatched, low-quality server events. Browser fires 'PartialLead' (custom) for those.
+    const formName = meta.form_name || data['form-name'] || '';
+    if (formName && formName !== 'mentoring-application') {
+      console.log('Skipping CAPI Lead — non-application form:', formName);
+      return { statusCode: 200, body: JSON.stringify({ ok: true, skipped: formName }) };
+    }
+
     const TOKEN = process.env.META_ACCESS_TOKEN;
     const PIXEL_ID = process.env.META_PIXEL_ID;
     const TEST_CODE = process.env.META_TEST_EVENT_CODE;
